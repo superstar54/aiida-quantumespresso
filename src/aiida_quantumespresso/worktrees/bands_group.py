@@ -16,28 +16,28 @@ SeekpathNode = build_node({
 
 
 @node()
-@calcfunction
-def inspect_relax(output_parameters):
+def inspect_relax(outputs):
     """Inspect relax calculation."""
-    current_number_of_bands = output_parameters.base.attributes.get('number_of_bands')
-    return {'current_number_of_bands': orm.Int(current_number_of_bands)}
+    current_number_of_bands = outputs.output_parameters.get_dict()['number_of_bands']
+    return {'current_number_of_bands': orm.Int(current_number_of_bands),
+            "current_structure": outputs.output_structure}
 
 
 @node()
 @calcfunction
-def generate_scf_parameters(parameters, current_number_of_bands):
+def generate_scf_parameters(parameters, current_number_of_bands=None):
     """Generate scf parameters from relax calculation."""
     parameters = parameters.get_dict()
     parameters.setdefault('SYSTEM', {})
-    parameters['SYSTEM'].setdefault('nbnd', current_number_of_bands)
+    if not current_number_of_bands:
+        current_number_of_bands = parameters['SYSTEM'].get('nbnd')
     return orm.Dict(parameters)
 
 
 @node()
-@calcfunction
-def inspect_scf(output_parameters):
+def inspect_scf(outputs):
     """Inspect scf calculation."""
-    current_number_of_bands = output_parameters.base.attributes.get('number_of_bands')
+    current_number_of_bands = outputs.output_parameters.get_dict()['number_of_bands']
     return {'current_number_of_bands': orm.Int(current_number_of_bands)}
 
 
@@ -66,10 +66,27 @@ def bands_worktree(structure, inputs, run_relax=False, bands_kpoints_distance=No
     # create worktree
     tree = WorkTree('Bands')
     tree.ctx = {'current_structure': structure, 'current_number_of_bands': None, 'bands_kpoints': None}
-    #
-    scf_node = tree.nodes.new(PwBaseChainNode, name='scf')
+    # ------- relax -----------
+    relax_node = tree.nodes.new(PwRelaxChainNode, name='relax')
+    relax_inputs = inputs.get('relax')
+    relax_inputs['structure'] = '{{current_structure}}'
+    relax_node.set(relax_inputs)
+    inspect_relax_node = tree.nodes.new(inspect_relax, name='inspect_relax')
+    tree.links.new(relax_node.outputs['_outputs'], inspect_relax_node.inputs['outputs'])
+    inspect_relax_node.to_ctx = [['current_number_of_bands', 'current_number_of_bands'],
+                                 ['current_structure', 'current_structure']]
+    # -------- seekpath -----------
+    seekpath_node = tree.nodes.new(
+        SeekpathNode,
+        name='seekpath',
+        structure='{{current_structure}}',
+        kwargs={'reference_distance': orm.Float(bands_kpoints_distance)},
+    )
+    seekpath_node.to_ctx = [['primitive_structure', 'current_structure'], ['explicit_kpoints', 'bands_kpoints']]
+    # -------- scf -----------
     scf_inputs = inputs.get('scf')
     scf_inputs['pw.structure'] = '{{current_structure}}'
+    scf_node = tree.nodes.new(PwBaseChainNode, name='scf')
     scf_node.set(scf_inputs)
     scf_parameters = tree.nodes.new(
         generate_scf_parameters,
@@ -79,8 +96,9 @@ def bands_worktree(structure, inputs, run_relax=False, bands_kpoints_distance=No
     )
     tree.links.new(scf_parameters.outputs[0], scf_node.inputs['pw.parameters'])
     inspect_scf_node = tree.nodes.new(inspect_scf, name='inspect_scf')
-    tree.links.new(scf_node.outputs['output_parameters'], inspect_scf_node.inputs['output_parameters'])
-    #
+    tree.links.new(scf_node.outputs['_outputs'], inspect_scf_node.inputs['outputs'])
+    inspect_relax_node.to_ctx = [['current_number_of_bands', 'current_number_of_bands']]
+    # -------- bands -----------
     bands_node = tree.nodes.new(PwBaseChainNode, name='bands')
     bands_inputs = inputs.get('bands')
     bands_inputs['pw.structure'] = '{{current_structure}}'
@@ -94,26 +112,15 @@ def bands_worktree(structure, inputs, run_relax=False, bands_kpoints_distance=No
     tree.links.new(scf_node.outputs['remote_folder'], bands_node.inputs['pw.parent_folder'])
     tree.links.new(scf_node.outputs['output_parameters'], bands_parameters.inputs['output_parameters'])
     tree.links.new(bands_parameters.outputs[0], bands_node.inputs['pw.parameters'])
-    if run_relax:
-        relax_node = tree.nodes.new(PwRelaxChainNode, name='relax')
-        relax_inputs = inputs.get('relax')
-        relax_inputs['structure'] = '{{current_structure}}'
-        relax_node.set(relax_inputs)
-        relax_node.to_ctx = [['output_structure', 'current_structure']]
-        inspect_relax_node = tree.nodes.new(inspect_relax, name='inspect_relax')
-        inspect_relax_node.to_ctx = [['current_number_of_bands', 'current_number_of_bands']]
-        tree.links.new(relax_node.outputs['output_parameters'], inspect_relax_node.inputs['output_parameters'])
-        scf_parameters.wait.append('inspect_relax')
-    if bands_kpoints_distance is not None:
-        seekpath_node = tree.nodes.new(
-            SeekpathNode,
-            name='seekpath',
-            structure='{{current_structure}}',
-            kwargs={'reference_distance': bands_kpoints_distance}
-        )
-        seekpath_node.to_ctx = [['primitive_structure', 'current_structure'], ['explicit_kpoints', 'bands_kpoints']]
-        scf_parameters.wait.append('seekpath')
-        if run_relax:
-            seekpath_node.wait = ['inspect_relax']
+    # -------- dependences -----------
+    seekpath_node.wait = ['inspect_relax']
+    scf_parameters.wait = ['inspect_relax', 'seekpath']
+    bands_parameters.wait = ['inspect_scf']
+    # delete nodes
+    if not run_relax:
+        tree.nodes.delete('relax')
+        tree.nodes.delete('inspect_relax')
+    if not bands_kpoints_distance:
+        tree.nodes.delete('seekpath')
     # export worktree
     return tree
