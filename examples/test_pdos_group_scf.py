@@ -7,7 +7,7 @@ from aiida.orm import Dict, KpointsData, StructureData, load_code, load_group
 from aiida_worktree import WorkTree
 from ase.build import bulk
 
-from aiida_quantumespresso.worktrees.bands_group import bands_worktree
+from aiida_quantumespresso.worktrees.pdos_group import pdos_worktree
 
 load_profile()
 
@@ -27,10 +27,6 @@ paras = Dict({
         'degauss': 0.1,
     },
 })
-relax_paras = deepcopy(paras)
-relax_paras.get_dict()['CONTROL']['calculation'] = 'vc-relax'
-bands_paras = deepcopy(paras)
-bands_paras.get_dict()['CONTROL']['calculation'] = 'bands'
 nscf_paras = deepcopy(paras)
 nscf_paras.get_dict()['CONTROL']['calculation'] = 'nscf'
 
@@ -47,38 +43,6 @@ metadata = {
             'num_mpiprocs_per_machine': 1,
         },
     }
-}
-
-bands_inputs = {
-    'relax': {
-        'base': {
-            'pw': {
-                'code': code,
-                'pseudos': pseudos,
-                'parameters': relax_paras,
-                'metadata': metadata,
-            },
-            'kpoints': kpoints,
-        },
-    },
-    'scf': {
-        'pw': {
-            'code': code,
-            'pseudos': pseudos,
-            'parameters': paras,
-            'metadata': metadata,
-        },
-        'kpoints': kpoints,
-    },
-    'bands': {
-        'pw': {
-            'code': code,
-            'pseudos': pseudos,
-            'parameters': bands_paras,
-            'metadata': metadata,
-        },
-        'kpoints': kpoints,
-    },
 }
 
 pdos_inputs = {
@@ -108,6 +72,6 @@ pdos_inputs = {
     },
 }
 
-wt = WorkTree('Bands')
-bands_job = wt.nodes.new(bands_worktree, name='bands_group', structure=structure_si, inputs=bands_inputs)
+wt = WorkTree('Pdos')
+pdos_job = wt.nodes.new(pdos_worktree, name='pdos_group', structure=structure_si, inputs=pdos_inputs, run_scf=True)
 wt.run()

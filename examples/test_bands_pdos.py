@@ -4,31 +4,36 @@ from copy import deepcopy
 
 from aiida import load_profile
 from aiida.orm import Dict, KpointsData, StructureData, load_code, load_group
-from aiida_worktree import WorkTree
+from aiida_worktree import WorkTree, build_node
 from ase.build import bulk
 
 from aiida_quantumespresso.worktrees.bands_group import bands_worktree
+from aiida_quantumespresso.worktrees.pdos_group import pdos_worktree
 
 load_profile()
+
+PwRelaxChainNode = build_node({'path': 'aiida_quantumespresso.workflows.pw.relax.PwRelaxWorkChain'})
 
 atoms = bulk('Si')
 structure_si = StructureData(ase=atoms)
 
-code = load_code('qe-7.2-pw@localhost')
+pw_code = load_code('qe-7.2-pw@localhost')
+dos_code = load_code('qe-7.2-dos@localhost')
+projwfc_code = load_code('qe-7.2-projwfc@localhost')
 paras = Dict({
     'CONTROL': {
         'calculation': 'scf',
     },
     'SYSTEM': {
-        'ecutwfc': 30,
-        'ecutrho': 240,
+        'ecutwfc': 40,
+        'ecutrho': 300,
         'occupations': 'smearing',
         'smearing': 'gaussian',
-        'degauss': 0.1,
+        'degauss': 0.02,
     },
 })
 relax_paras = deepcopy(paras)
-relax_paras.get_dict()['CONTROL']['calculation'] = 'vc-relax'
+relax_paras.get_dict()['CONTROL']['calculation'] = 'relax'
 bands_paras = deepcopy(paras)
 bands_paras.get_dict()['CONTROL']['calculation'] = 'bands'
 nscf_paras = deepcopy(paras)
@@ -44,26 +49,28 @@ metadata = {
     'options': {
         'resources': {
             'num_machines': 1,
-            'num_mpiprocs_per_machine': 1,
+            'num_mpiprocs_per_machine': 2,
         },
     }
 }
 
-bands_inputs = {
-    'relax': {
-        'base': {
-            'pw': {
-                'code': code,
-                'pseudos': pseudos,
-                'parameters': relax_paras,
-                'metadata': metadata,
-            },
-            'kpoints': kpoints,
+relax_inputs = {
+    'base': {
+        'pw': {
+            'code': pw_code,
+            'pseudos': pseudos,
+            'parameters': relax_paras,
+            'metadata': metadata,
         },
+        'kpoints': kpoints,
     },
+    'structure': structure_si,
+}
+
+bands_inputs = {
     'scf': {
         'pw': {
-            'code': code,
+            'code': pw_code,
             'pseudos': pseudos,
             'parameters': paras,
             'metadata': metadata,
@@ -72,7 +79,7 @@ bands_inputs = {
     },
     'bands': {
         'pw': {
-            'code': code,
+            'code': pw_code,
             'pseudos': pseudos,
             'parameters': bands_paras,
             'metadata': metadata,
@@ -84,7 +91,7 @@ bands_inputs = {
 pdos_inputs = {
     'scf': {
         'pw': {
-            'code': code,
+            'code': pw_code,
             'pseudos': pseudos,
             'parameters': paras,
             'metadata': metadata,
@@ -93,7 +100,7 @@ pdos_inputs = {
     },
     'nscf': {
         'pw': {
-            'code': code,
+            'code': pw_code,
             'pseudos': pseudos,
             'parameters': nscf_paras,
             'metadata': metadata,
@@ -101,13 +108,20 @@ pdos_inputs = {
         'kpoints': kpoints,
     },
     'dos': {
+        'code': dos_code,
         'metadata': metadata,
     },
     'projwfc': {
+        'code': projwfc_code,
         'metadata': metadata,
     },
 }
 
-wt = WorkTree('Bands')
-bands_job = wt.nodes.new(bands_worktree, name='bands_group', structure=structure_si, inputs=bands_inputs)
+wt = WorkTree('Electronic Structure of Si')
+relax_node = wt.nodes.new(PwRelaxChainNode, name='relax')
+relax_node.set(relax_inputs)
+bands_job = wt.nodes.new(bands_worktree, name='bands_group', inputs=bands_inputs, run_relax=False)
+pdos_job = wt.nodes.new(pdos_worktree, name='pdos_group', inputs=pdos_inputs, run_scf=True)
+wt.links.new(relax_node.outputs['output_structure'], bands_job.inputs['structure'])
+wt.links.new(relax_node.outputs['output_structure'], pdos_job.inputs['structure'])
 wt.run()
