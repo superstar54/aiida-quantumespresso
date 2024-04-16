@@ -7,8 +7,8 @@ from aiida.orm import Dict, KpointsData, StructureData, load_code, load_group
 from aiida_worktree import WorkTree, build_node
 from ase.build import bulk
 
-from aiida_quantumespresso.worktrees.bands_group import bands_worktree
-from aiida_quantumespresso.worktrees.pdos_group import pdos_worktree
+from aiida_quantumespresso.worktrees.bands import bands_worktree
+from aiida_quantumespresso.worktrees.pdos import pdos_worktree
 
 load_profile()
 
@@ -40,7 +40,7 @@ nscf_paras = deepcopy(paras)
 nscf_paras.get_dict()['CONTROL']['calculation'] = 'nscf'
 
 kpoints = KpointsData()
-kpoints.set_kpoints_mesh([1, 1, 1])
+kpoints.set_kpoints_mesh([3, 3, 3])
 # Load the pseudopotential family.
 pseudo_family = load_group('SSSP/1.3/PBEsol/efficiency')
 pseudos = pseudo_family.get_pseudos(structure=structure_si)

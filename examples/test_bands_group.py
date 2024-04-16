@@ -4,10 +4,9 @@ from copy import deepcopy
 
 from aiida import load_profile
 from aiida.orm import Dict, KpointsData, StructureData, load_code, load_group
-from aiida_worktree import WorkTree
 from ase.build import bulk
 
-from aiida_quantumespresso.worktrees.bands_group import bands_worktree
+from aiida_quantumespresso.worktrees.bands import bands_worktree
 
 load_profile()
 
@@ -108,6 +107,5 @@ pdos_inputs = {
     },
 }
 
-wt = WorkTree('Bands')
-bands_job = wt.nodes.new(bands_worktree, name='bands_group', structure=structure_si, inputs=bands_inputs)
+wt = bands_worktree(structure=structure_si, inputs=bands_inputs)
 wt.run()

@@ -6,7 +6,7 @@ from aiida import load_profile
 from aiida.orm import Dict, KpointsData, StructureData, load_code, load_group
 from ase.build import bulk
 
-from aiida_quantumespresso.worktrees.relax_group import relax_worktree
+from aiida_quantumespresso.worktrees.relax import relax_worktree
 
 load_profile()
 
