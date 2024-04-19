@@ -6,7 +6,7 @@ from aiida import load_profile
 from aiida.orm import Dict, KpointsData, StructureData, load_code, load_group
 from ase.build import bulk
 
-from aiida_quantumespresso.worktrees.pdos import pdos_worktree
+from aiida_quantumespresso.workgraphs.pdos import pdos_workgraph
 
 load_profile()
 
@@ -75,6 +75,6 @@ pdos_inputs = {
     },
 }
 
-wt = pdos_worktree(structure=structure_si, inputs=pdos_inputs, run_scf=True)
-wt.name = 'scf_and_pdos'
-wt.run()
+wg = pdos_workgraph(structure=structure_si, inputs=pdos_inputs, run_scf=True)
+wg.name = 'scf_and_pdos'
+wg.run()

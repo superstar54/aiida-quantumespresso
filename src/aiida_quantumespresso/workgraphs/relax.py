@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
-"""PdosWorkTree."""
+"""PdosWorkGraph."""
 
 from aiida import orm
-from aiida_worktree import WorkTree, build_node
-from aiida_worktree.decorator import node
-
-# register node
-PwBaseNode = build_node({'path': 'aiida_quantumespresso.workflows.pw.base.PwBaseWorkChain'})
+from aiida_workgraph import WorkGraph
+from aiida_workgraph.decorator import node
+from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
 
 
 @node()
@@ -58,12 +56,12 @@ def prepare_scf_inputs(parameters, current_number_of_bands=None):
     outputs=[['relax.output_structure', 'output_structure'],
              ['inspect_relax.current_number_of_bands', 'current_number_of_bands']]
 )
-def relax_worktree(structure=None, inputs=None, max_iterations=5, volume_threshold=0.1):
-    """Generate RelaxWorkTree."""
+def relax_workgraph(structure=None, inputs=None, max_iterations=5, volume_threshold=0.1):
+    """Generate RelaxWorkGraph."""
     inputs = {} if inputs is None else inputs
-    # create worktree
-    tree = WorkTree()
-    tree.worktree_type = 'WHILE'
+    # create workgraph
+    tree = WorkGraph()
+    tree.workgraph_type = 'WHILE'
     tree.max_iterations = max_iterations
     tree.conditions = ['should_run_relax.result']
     tree.ctx = {
@@ -89,7 +87,7 @@ def relax_worktree(structure=None, inputs=None, max_iterations=5, volume_thresho
         current_number_of_bands='{{current_number_of_bands}}'
     )
     # -------- relax -----------
-    relax_node = tree.nodes.new(PwBaseNode, name='relax')
+    relax_node = tree.nodes.new(PwBaseWorkChain, name='relax')
     inputs['pw.structure'] = '{{current_structure}}'
     relax_node.set(inputs)
     relax_node.to_ctx = [['output_structure', 'current_structure']]
@@ -101,20 +99,20 @@ def relax_worktree(structure=None, inputs=None, max_iterations=5, volume_thresho
     tree.links.new(relax_node.outputs['_outputs'], inspect_relax_node.inputs['outputs'])
     inspect_relax_node.to_ctx = [['current_number_of_bands', 'current_number_of_bands'],
                                  ['prev_cell_volume', 'prev_cell_volume'], ['is_converged', 'is_converged']]
-    # export worktree
+    # export workgraph
     return tree
 
 
 @node.group()
-def relax_scf_worktree(structure=None, inputs=None, max_iterations=5, volume_threshold=0.1):
-    """Generate RelaxSCFWorkTree."""
+def relax_scf_workgraph(structure=None, inputs=None, max_iterations=5, volume_threshold=0.1):
+    """Generate RelaxSCFWorkGraph."""
     inputs = {} if inputs is None else inputs
-    # create worktree
-    tree = WorkTree()
+    # create workgraph
+    tree = WorkGraph()
     # -------- relax -----------
     relax_inputs = inputs.get('relax', {})
     relax_node = tree.nodes.new(
-        relax_worktree,
+        relax_workgraph,
         name='relax',
         structure=structure,
         inputs=relax_inputs,
@@ -132,7 +130,7 @@ def relax_scf_worktree(structure=None, inputs=None, max_iterations=5, volume_thr
         relax_node.outputs['current_number_of_bands'], prepare_scf_inputs_node.inputs['current_number_of_bands']
     )
     # -------- scf -----------
-    scf_node = tree.nodes.new(PwBaseNode, name='scf')
+    scf_node = tree.nodes.new(PwBaseWorkChain, name='scf')
     scf_node.set(scf_inputs)
     tree.links.new(prepare_scf_inputs_node.outputs[0], scf_node.inputs['pw.parameters'])
     tree.links.new(relax_node.outputs['output_structure'], scf_node.inputs['pw.structure'])

@@ -6,7 +6,7 @@ from aiida import load_profile
 from aiida.orm import Dict, KpointsData, StructureData, load_code, load_group
 from ase.build import bulk
 
-from aiida_quantumespresso.worktrees.relax import relax_worktree
+from aiida_quantumespresso.workgraphs.relax import relax_workgraph
 
 load_profile()
 
@@ -54,9 +54,9 @@ relax_inputs = {
     'kpoints': kpoints,
 }
 
-wt = relax_worktree(
+wg = relax_workgraph(
     structure=structure_si,
     inputs=relax_inputs,
     max_iterations=5,
 )
-wt.run()
+wg.run()

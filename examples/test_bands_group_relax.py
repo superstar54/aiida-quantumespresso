@@ -4,10 +4,10 @@ from copy import deepcopy
 
 from aiida import load_profile
 from aiida.orm import Dict, Float, KpointsData, StructureData, load_code, load_group
-from aiida_worktree import WorkTree
+from aiida_workgraph import WorkGraph
 from ase.build import bulk
 
-from aiida_quantumespresso.worktrees.bands import bands_worktree
+from aiida_quantumespresso.workgraphs.bands import bands_workgraph
 
 load_profile()
 
@@ -79,11 +79,11 @@ bands_inputs = {
     },
 }
 
-wt = WorkTree('Bands')
-wt = bands_worktree(
+wg = WorkGraph('Bands')
+wg = bands_workgraph(
     structure=structure_si,
     inputs=bands_inputs,
     run_relax=True,
     bands_kpoints_distance=Float(0.2),
 )
-wt.run()
+wg.run()

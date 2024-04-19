@@ -1,16 +1,11 @@
-"""BandsWorkTree."""
+"""BandsWorkGraph."""
 
 from aiida import orm
-from aiida_worktree import WorkTree, build_node
-from aiida_worktree.decorator import node
-
-# register node
-PwBaseChainNode = build_node({'path': 'aiida_quantumespresso.workflows.pw.base.PwBaseWorkChain'})
-PwRelaxChainNode = build_node({'path': 'aiida_quantumespresso.workflows.pw.relax.PwRelaxWorkChain'})
-SeekpathNode = build_node({
-    'path':
-    'aiida_quantumespresso.calculations.functions.seekpath_structure_analysis.seekpath_structure_analysis'
-})
+from aiida_workgraph import WorkGraph
+from aiida_workgraph.decorator import node
+from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
+from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
+from aiida_quantumespresso.calculations.functions.seekpath_structure_analysis import seekpath_structure_analysis
 
 # define some utility nodes
 @node()
@@ -57,14 +52,14 @@ def generate_bands_parameters(parameters, output_parameters, nbands_factor=None)
 
 
 @node.group()
-def bands_worktree(structure=None, inputs=None, run_relax=False, bands_kpoints_distance=None, nbands_factor=None):
-    """BandsWorkTree."""
+def bands_workgraph(structure=None, inputs=None, run_relax=False, bands_kpoints_distance=None, nbands_factor=None):
+    """BandsWorkGraph."""
     inputs = {} if inputs is None else inputs
-    # create worktree
-    tree = WorkTree()
+    # create workgraph
+    tree = WorkGraph()
     tree.ctx = {'current_structure': structure, 'current_number_of_bands': None, 'bands_kpoints': None}
     # ------- relax -----------
-    relax_node = tree.nodes.new(PwRelaxChainNode, name='relax')
+    relax_node = tree.nodes.new(PwRelaxWorkChain, name='relax')
     relax_inputs = inputs.get('relax', {})
     relax_inputs['structure'] = '{{current_structure}}'
     relax_node.set(relax_inputs)
@@ -74,7 +69,7 @@ def bands_worktree(structure=None, inputs=None, run_relax=False, bands_kpoints_d
                                  ['current_structure', 'current_structure']]
     # -------- seekpath -----------
     seekpath_node = tree.nodes.new(
-        SeekpathNode,
+        seekpath_structure_analysis,
         name='seekpath',
         structure='{{current_structure}}',
         kwargs={'reference_distance': orm.Float(bands_kpoints_distance)},
@@ -83,7 +78,7 @@ def bands_worktree(structure=None, inputs=None, run_relax=False, bands_kpoints_d
     # -------- scf -----------
     scf_inputs = inputs.get('scf', {"pw": {}})
     scf_inputs['pw.structure'] = '{{current_structure}}'
-    scf_node = tree.nodes.new(PwBaseChainNode, name='scf')
+    scf_node = tree.nodes.new(PwBaseWorkChain, name='scf')
     scf_node.set(scf_inputs)
     scf_parameters = tree.nodes.new(
         generate_scf_parameters,
@@ -95,7 +90,7 @@ def bands_worktree(structure=None, inputs=None, run_relax=False, bands_kpoints_d
     inspect_scf_node = tree.nodes.new(inspect_scf, name='inspect_scf')
     tree.links.new(scf_node.outputs['_outputs'], inspect_scf_node.inputs['outputs'])
     # -------- bands -----------
-    bands_node = tree.nodes.new(PwBaseChainNode, name='bands')
+    bands_node = tree.nodes.new(PwBaseWorkChain, name='bands')
     bands_inputs = inputs.get('bands', {"pw": {}})
     bands_inputs['pw.structure'] = '{{current_structure}}'
     bands_node.set(bands_inputs)
@@ -118,5 +113,5 @@ def bands_worktree(structure=None, inputs=None, run_relax=False, bands_kpoints_d
         tree.nodes.delete('inspect_relax')
     if not bands_kpoints_distance:
         tree.nodes.delete('seekpath')
-    # export worktree
+    # export workgraph
     return tree

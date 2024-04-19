@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
-"""PdosWorkTree."""
+"""PdosWorkGraph."""
 
 from aiida import orm
-from aiida_worktree import WorkTree, build_node
-from aiida_worktree.decorator import node
-
-# register node
-PwNode = build_node({'path': 'aiida_quantumespresso.workflows.pw.base.PwBaseWorkChain'})
-DosNode = build_node({'path': 'aiida_quantumespresso.calculations.dos.DosCalculation'})
-ProjwfcNode = build_node({'path': 'aiida_quantumespresso.calculations.projwfc.ProjwfcCalculation'})
-
+from aiida_workgraph import WorkGraph
+from aiida_workgraph.decorator import node
+from aiida_quantumespresso.workflows.pw.base import PwBaseWorkChain
+from aiida_quantumespresso.calculations.dos import DosCalculation
+from aiida_quantumespresso.calculations.projwfc import ProjwfcCalculation
 
 @node()
 def generate_dos_parameters(nscf_outputs, parameters=None):
@@ -41,27 +38,27 @@ def generate_projwfc_parameters(nscf_outputs, parameters=None):
 
 
 @node.group()
-def pdos_worktree(structure=None, inputs=None, run_scf=True):
-    """Generate PdosWorkTree."""
+def pdos_workgraph(structure=None, inputs=None, run_scf=True):
+    """Generate PdosWorkGraph."""
     inputs = {} if inputs is None else inputs
-    # create worktree
-    tree = WorkTree()
+    # create workgraph
+    tree = WorkGraph()
     tree.ctx = {'current_structure': structure, 'current_number_of_bands': None, 'parent_folder': None}
     # -------- scf -----------
-    scf_node = tree.nodes.new(PwNode, name='scf')
+    scf_node = tree.nodes.new(PwBaseWorkChain, name='scf')
     scf_inputs = inputs.get('scf', {})
     scf_inputs['pw.structure'] = structure
     scf_node.set(scf_inputs)
     scf_node.to_ctx = [['remote_folder', 'scf_parent_folder']]
     # -------- nscf -----------
-    nscf_node = tree.nodes.new(PwNode, name='nscf')
+    nscf_node = tree.nodes.new(PwBaseWorkChain, name='nscf')
     nscf_inputs = inputs.get('nscf', {})
     nscf_inputs['pw.structure'] = structure
     if run_scf:
         nscf_inputs['pw.parent_folder'] = '{{scf_parent_folder}}'
     nscf_node.set(nscf_inputs)
     # -------- dos -----------
-    dos1 = tree.nodes.new(DosNode, name='dos')
+    dos1 = tree.nodes.new(DosCalculation, name='dos')
     dos_input = inputs.get('dos', {})
     dos1.set(dos_input)
     dos_parameters = tree.nodes.new(
@@ -71,7 +68,7 @@ def pdos_worktree(structure=None, inputs=None, run_scf=True):
     tree.links.new(nscf_node.outputs['_outputs'], dos_parameters.inputs['nscf_outputs'])
     tree.links.new(dos_parameters.outputs[0], dos1.inputs['parameters'])
     # -------- projwfc -----------
-    projwfc1 = tree.nodes.new(ProjwfcNode, name='projwfc')
+    projwfc1 = tree.nodes.new(ProjwfcCalculation, name='projwfc')
     projwfc_inputs = inputs.get('projwfc', {})
     projwfc1.set(projwfc_inputs)
     projwfc_parameters = tree.nodes.new(
@@ -84,5 +81,5 @@ def pdos_worktree(structure=None, inputs=None, run_scf=True):
     nscf_node.wait = ['scf']
     if not run_scf:
         tree.nodes.delete('scf')
-    # export worktree
+    # export workgraph
     return tree

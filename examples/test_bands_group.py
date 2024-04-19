@@ -6,7 +6,7 @@ from aiida import load_profile
 from aiida.orm import Dict, KpointsData, StructureData, load_code, load_group
 from ase.build import bulk
 
-from aiida_quantumespresso.worktrees.bands import bands_worktree
+from aiida_quantumespresso.workgraphs.bands import bands_workgraph
 
 load_profile()
 
@@ -107,5 +107,5 @@ pdos_inputs = {
     },
 }
 
-wt = bands_worktree(structure=structure_si, inputs=bands_inputs)
-wt.run()
+wg = bands_workgraph(structure=structure_si, inputs=bands_inputs)
+wg.run()

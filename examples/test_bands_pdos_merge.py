@@ -4,15 +4,13 @@ from copy import deepcopy
 
 from aiida import load_profile
 from aiida.orm import Dict, KpointsData, StructureData, load_code, load_group
-from aiida_worktree import WorkTree, build_node
+from aiida_workgraph import WorkGraph
 from ase.build import bulk
-
-from aiida_quantumespresso.worktrees.bands import bands_worktree
-from aiida_quantumespresso.worktrees.pdos import pdos_worktree
+from aiida_quantumespresso.workflows.pw.relax import PwRelaxWorkChain
+from aiida_quantumespresso.workgraphs.bands import bands_workgraph
+from aiida_quantumespresso.workgraphs.pdos import pdos_workgraph
 
 load_profile()
-
-PwRelaxChainNode = build_node({'path': 'aiida_quantumespresso.workflows.pw.relax.PwRelaxWorkChain'})
 
 atoms = bulk('Si')
 structure_si = StructureData(ase=atoms)
@@ -117,15 +115,15 @@ pdos_inputs = {
     },
 }
 
-wt = WorkTree('Electronic Structure of Si')
-relax_node = wt.nodes.new(PwRelaxChainNode, name='relax')
+wg = WorkGraph('Electronic Structure of Si')
+relax_node = wg.nodes.new(PwRelaxWorkChain, name='relax')
 relax_node.set(relax_inputs)
-bands_wt = bands_worktree(structure=structure_si, inputs=bands_inputs, run_relax=False)
-pdos_wt = pdos_worktree(structure=structure_si, inputs=pdos_inputs, run_scf=True)
+bands_wg = bands_workgraph(structure=structure_si, inputs=bands_inputs, run_relax=False)
+pdos_wg = pdos_workgraph(structure=structure_si, inputs=pdos_inputs, run_scf=True)
 # append a wroktree
-wt.append(bands_wt, prefix='bands_')
-wt.append(pdos_wt, prefix='pdos_')
+wg.append(bands_wg, prefix='bands_')
+wg.append(pdos_wg, prefix='pdos_')
 # adjust the links
-wt.links.new(relax_node.outputs['output_structure'], wt.nodes['bands_scf'].inputs['pw.structure'])
-wt.links.new(relax_node.outputs['output_structure'], wt.nodes['pdos_scf'].inputs['pw.structure'])
-wt.run()
+wg.links.new(relax_node.outputs['output_structure'], wg.nodes['bands_scf'].inputs['pw.structure'])
+wg.links.new(relax_node.outputs['output_structure'], wg.nodes['pdos_scf'].inputs['pw.structure'])
+wg.run()
