@@ -51,7 +51,7 @@ def generate_bands_parameters(parameters, output_parameters, nbands_factor=None)
     return orm.Dict(parameters)
 
 
-@node.group()
+@node.graph_builder()
 def bands_workgraph(structure=None, inputs=None, run_relax=False, bands_kpoints_distance=None, nbands_factor=None):
     """BandsWorkGraph."""
     inputs = {} if inputs is None else inputs

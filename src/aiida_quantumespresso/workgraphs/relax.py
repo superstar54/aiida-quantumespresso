@@ -103,7 +103,7 @@ def relax_workgraph(structure=None, inputs=None, max_iterations=5, volume_thresh
     return tree
 
 
-@node.group()
+@node.graph_builder()
 def relax_scf_workgraph(structure=None, inputs=None, max_iterations=5, volume_threshold=0.1):
     """Generate RelaxSCFWorkGraph."""
     inputs = {} if inputs is None else inputs

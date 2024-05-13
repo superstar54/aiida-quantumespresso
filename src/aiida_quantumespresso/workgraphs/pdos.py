@@ -37,7 +37,7 @@ def generate_projwfc_parameters(nscf_outputs, parameters=None):
     return orm.Dict(paras)
 
 
-@node.group()
+@node.graph_builder()
 def pdos_workgraph(structure=None, inputs=None, run_scf=True):
     """Generate PdosWorkGraph."""
     inputs = {} if inputs is None else inputs
