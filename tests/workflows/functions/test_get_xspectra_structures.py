@@ -52,12 +52,13 @@ def test_base_molecule(generate_structure):
     structure = generate_structure('water')
     inputs = {
         'structure': structure,
-        'abs_elements_list': List(['O']),
+        'absorbing_elements_list': List(['O']),
         'supercell_min_parameter': Float(10.0),
         'is_molecule_input': Bool(True)
     }
     result = get_xspectra_structures(**inputs)
     assert len(result) == 3
+    assert 'site_0' not in result['marked_structures']
     assert result['marked_structures']['site_2'].get_cell_volume() >= 100.0
 
 

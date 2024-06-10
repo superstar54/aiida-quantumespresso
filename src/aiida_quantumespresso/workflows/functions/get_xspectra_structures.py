@@ -27,7 +27,8 @@ def process_molecule_input(structure, **kwargs):  # pylint: disable=too-many-sta
     else:
         pymatgen_kwargs = {}
 
-    abs_elements_list = kwargs.get('abs_elements_list', [kind.symbol for kind in structure.kinds])
+    absorbing_elements_list = kwargs.get('absorbing_elements_list')
+    abs_elements_list = absorbing_elements_list.get_list() if absorbing_elements_list else [kind.symbol for kind in structure.kinds]
     pymatgen_molecule = structure.get_pymatgen_molecule()
     centered_molecule = pymatgen_molecule.get_centered_molecule()
     centered_positions = centered_molecule.cart_coords
