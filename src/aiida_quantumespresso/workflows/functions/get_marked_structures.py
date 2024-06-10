@@ -22,8 +22,8 @@ def get_marked_structures(structure, atoms_list, marker='X'):
             f'the input structure ({elements_present}.'
         )
 
-    output_params = {}
-    result = {}
+    output_params = {'equivalent_sites_data': {}}
+    result = {'marked_structures': {}}
 
     for index in atoms_list.get_list():
         marked_structure = StructureData()
@@ -36,13 +36,13 @@ def get_marked_structures(structure, atoms_list, marker='X'):
                 marked_site = Site(kind_name=marked_kind.name, position=site.position)
                 marked_structure.append_kind(marked_kind)
                 marked_structure.append_site(marked_site)
-                output_params[f'site_{index}'] = {'symbol': site.kind_name, 'multiplicity': 1}
+                output_params['equivalent_sites_data'][f'site_{index}'] = {'symbol': site.kind_name, 'multiplicity': 1}
             else:
                 if site.kind_name not in [kind.name for kind in marked_structure.kinds]:
                     marked_structure.append_kind(kinds[site.kind_name])
                 new_site = Site(kind_name=site.kind_name, position=site.position)
                 marked_structure.append_site(new_site)
-        result[f'site_{index}'] = marked_structure
+        result['marked_structures'][f'site_{index}'] = marked_structure
 
     result['output_parameters'] = orm.Dict(dict=output_params)
 

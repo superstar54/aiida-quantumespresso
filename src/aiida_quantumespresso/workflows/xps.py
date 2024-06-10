@@ -591,9 +591,8 @@ class XpsWorkChain(ProtocolMixin, WorkChain):
             result = get_marked_structures(input_structure, **inputs)
             self.ctx.supercell = input_structure
             self.ctx.equivalent_sites_data = result.pop('output_parameters').get_dict()
-        structures_to_process = {f'{Key.split("_")[0]}_{Key.split("_")[1]}' : Value for Key, Value in result.items()}
-        self.report(f'structures_to_process: {structures_to_process}')
-        self.ctx.structures_to_process = structures_to_process
+        self.report(f'structures_to_process: {result["marked_structures"]}')
+        self.ctx.structures_to_process = result['marked_structures']
 
     def should_run_gs_scf(self):
         """If the 'calc_binding_energy' input namespace is True, we run a scf calculation for the supercell."""

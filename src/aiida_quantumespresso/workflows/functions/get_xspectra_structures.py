@@ -455,12 +455,13 @@ def get_xspectra_structures(structure, **kwargs):  # pylint: disable=too-many-st
             multiples = get_supercell_result['multiples']
             new_supercell = get_supercell_result['new_supercell']
 
-        result['supercell'] = new_supercell
-
         output_params['supercell_factors'] = multiples
         output_params['supercell_num_sites'] = len(new_supercell.sites)
         output_params['supercell_cell_matrix'] = new_supercell.cell
         output_params['supercell_cell_lengths'] = new_supercell.cell_lengths
+
+    result['supercell'] = new_supercell
+    marked_structures = {}
 
     for value in equivalency_dict.values():
         target_site = value['site_index']
@@ -484,11 +485,12 @@ def get_xspectra_structures(structure, **kwargs):  # pylint: disable=too-many-st
         if is_hubbard_structure:
             marked_hubbard_structure = HubbardStructureData.from_structure(marked_structure)
             marked_hubbard_structure.hubbard = get_supercell_result['supercell_hubbard_params']
-            result[f'site_{target_site}_{value["symbol"]}'] = marked_hubbard_structure
+            marked_structures[f'site_{target_site}'] = marked_hubbard_structure
         else:
-            result[f'site_{target_site}_{value["symbol"]}'] = marked_structure
+            marked_structures[f'site_{target_site}'] = marked_structure
 
     output_params['is_molecule_input'] = is_molecule_input
     result['output_parameters'] = orm.Dict(dict=output_params)
+    result['marked_structures'] = marked_structures
 
     return result

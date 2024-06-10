@@ -14,6 +14,6 @@ def test_get_marked_structure():
     structure = StructureData(ase=mol)
     indices = List(list=[0, 1, 2])
     output = get_marked_structures(structure, indices)
-    assert len(output) == 4
-    assert output['site_0'].get_site_kindnames() == ['X', 'C', 'O', 'H', 'H', 'H', 'H', 'H', 'H']
-    assert output['site_1'].get_site_kindnames() == ['C', 'X', 'O', 'H', 'H', 'H', 'H', 'H', 'H']
+    assert len(output) == 2
+    assert output['marked_structures']['site_0'].get_site_kindnames() == ['X', 'C', 'O', 'H', 'H', 'H', 'H', 'H', 'H']
+    assert output['marked_structures']['site_1'].get_site_kindnames() == ['C', 'X', 'O', 'H', 'H', 'H', 'H', 'H', 'H']

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for the `get_marked_structure` class."""
-from aiida.orm import Bool, Dict, Int
+from aiida.orm import Bool, Dict, Float, Int, List
 import pytest
 
 from aiida_quantumespresso.utils.hubbard import HubbardStructureData, HubbardUtils
@@ -46,6 +46,21 @@ def test_base(generate_structure):
     assert len(out_params['equivalent_sites_data']) == 1
 
 
+def test_base_molecule(generate_structure):
+    """Test the basic operation of get_xspectra_structures."""
+
+    structure = generate_structure('water')
+    inputs = {
+        'structure': structure,
+        'abs_elements_list': List(['O']),
+        'supercell_min_parameter': Float(10.0),
+        'is_molecule_input': Bool(True)
+    }
+    result = get_xspectra_structures(**inputs)
+    assert len(result) == 3
+    assert result['marked_structures']['site_2'].get_cell_volume() >= 100.0
+
+
 def test_use_element_types(generate_structure):
     """Test the CF's `use_element_types` flag."""
 
@@ -70,9 +85,9 @@ def test_use_element_types(generate_structure):
     }
     result_element_types = get_xspectra_structures(**inputs_element_types)
 
-    assert 'site_1_Si' in result_kinds
-    assert 'site_1_Si' not in result_element_types
-    assert 'site_1_Si' not in result_bare
+    assert 'site_1' in result_kinds['marked_structures']
+    assert 'site_1' not in result_element_types['marked_structures']
+    assert 'site_1' not in result_bare['marked_structures']
 
 
 def test_hubbard(generate_structure):
@@ -90,7 +105,7 @@ def test_hubbard(generate_structure):
     inputs = {'structure': c_si_hub, 'standardize_structure': Bool(False)}
     result = get_xspectra_structures(**inputs)
 
-    marked = result['site_0_Si']
+    marked = result['marked_structures']['site_0']
     utils_marked = HubbardUtils(marked)
     hub_card_lines = [i.strip() for i in utils_marked.get_hubbard_card().splitlines()]
     out_params = result['output_parameters'].get_dict()

@@ -507,8 +507,7 @@ class XspectraCrystalWorkChain(ProtocolMixin, WorkChain):
         if spacegroup_number in range(195, 231): # isochoric system
             self.ctx.eps_vectors = [[1., 0., 0.]]
 
-        structures_to_process = {f'{Key.split("_")[0]}_{Key.split("_")[1]}' : Value for Key, Value in result.items()}
-        self.ctx.structures_to_process = structures_to_process
+        self.ctx.structures_to_process = result['marked_structures']
         self.ctx.equivalent_sites_data = out_params['equivalent_sites_data']
 
         self.out('supercell_structure', supercell)
