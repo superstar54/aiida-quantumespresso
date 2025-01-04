@@ -449,15 +449,11 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         1. If the structure is unchanged, we do a full restart.
         2. If the structure has changed during the calculation, we restart from scratch.
         """
-        try:
+        if 'output_structure' in calculation.outputs:
             self.ctx.inputs.structure = calculation.outputs.output_structure
-        except exceptions.NotExistent:
-            self.set_restart_type(RestartType.FULL, calculation.outputs.remote_folder)
-            self.report_error_handled(calculation, 'simply restart from the last calculation')
-        else:
-            self.set_restart_type(RestartType.FROM_SCRATCH)
-            self.report_error_handled(calculation, 'out of walltime: structure changed so restarting from scratch')
 
+        self.set_restart_type(RestartType.FROM_CHARGE_DENSITY, calculation.outputs.remote_folder)
+        self.report_error_handled(calculation, "restarting from the previous charge 'density.'")
         return ProcessHandlerReport(True)
 
     @process_handler(priority=575, exit_codes=[
@@ -604,10 +600,11 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         self.ctx.inputs.structure = calculation.outputs.output_structure
         action = (
             f'no electronic convergence but clean shutdown: reduced beta mixing from {mixing_beta} to {mixing_beta_new}'
-            'restarting from scratch but using output structure.'
+            'restarting from charge density and using output structure.'
         )
 
-        self.set_restart_type(RestartType.FROM_SCRATCH)
+        self.set_restart_type(RestartType.FROM_CHARGE_DENSITY, calculation.outputs.remote_folder)
+
         self.report_error_handled(calculation, action)
         return ProcessHandlerReport(True)
 
