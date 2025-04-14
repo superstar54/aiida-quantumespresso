@@ -1,3 +1,63 @@
+## v4.10.0
+
+### 👌 Improvements
+
+* Protocols: Update k-point sampling protocols [[17f0fd8](https://github.com/aiidateam/aiida-quantumespresso/commit/17f0fd893470abebf5d84015be4586d6345252fd)]
+* XSpectra & XPS: Issue Depreciation Warnings [[c4d7c19](https://github.com/aiidateam/aiida-quantumespresso/commit/c4d7c190456deca0c26e4fc36304e973fe14a2c2)]
+
+### 🐛 Bug fixes
+
+* `PdosWorkChain`: Enable energy range around the Fermi level [[435fc90](https://github.com/aiidateam/aiida-quantumespresso/commit/435fc9008d012c9a0d81d8fad95624dde7b670cb)]
+
+### 🔧 Maintenance
+
+* CD & nightly: update Github actions versions [[f356d3a](https://github.com/aiidateam/aiida-quantumespresso/commit/f356d3a0c347ade636e75ce063ac0b9c69e5cda6)]
+* Update GitHub actions versions [[91c7c30](https://github.com/aiidateam/aiida-quantumespresso/commit/91c7c30bc5b05a5ee85cf0cea9fbed784305ff59)]
+
+### 🧪 Tests
+
+* Create two pseudo families in `sssp` fixture [[043664e](https://github.com/aiidateam/aiida-quantumespresso/commit/043664e2ab607fe922a1eba2b0ee104f50a9616a)]
+
+
+## v4.9.0
+
+### 👌 Improvements
+
+* `PdosWorkChain`: Update protocols for improved accuracy [[8a13266](https://github.com/aiidateam/aiida-quantumespresso/commit/8a13266be795e31b6ce6c255612596f1377d4478)]
+
+### 🐛 Bug fixes
+
+* `ProjwfcParser`: Fix DOS parsing for spin-polarised case [[bcd5508](https://github.com/aiidateam/aiida-quantumespresso/commit/bcd550847b0bf8142bb43425a1480edfd4db2965)]
+
+### 🧪 Tests
+
+* Allow glob patterns in `retrieve_temporary` input [[af3739c](https://github.com/aiidateam/aiida-quantumespresso/commit/af3739c908e59ae3f11dd78f232703502ef1f0df)]
+
+### ♻️ Refactor
+
+* Refactor `projwfc.x` parser [[29f9c98](https://github.com/aiidateam/aiida-quantumespresso/commit/29f9c9846b9ee63e25f7e28664974228c45ec97c)]
+
+## v4.8.0
+
+### ✨ New features
+
+* `Hubbard`: add useful utility functions  [[41f196b](https://github.com/aiidateam/aiida-quantumespresso/commit/41f196b2b46022c179bdce0dcd44ab338d956551)]
+* `PwParser`: Add XML schema for Quantum ESPRESSO v7.4 [[75808a9](https://github.com/aiidateam/aiida-quantumespresso/commit/75808a918075b7ef0ac3b82557b5325330ba0fdc)]
+
+### 👌 Improvements
+
+* `PhParser`: allow for pattern initialization  [[74a18bc](https://github.com/aiidateam/aiida-quantumespresso/commit/74a18bc59beafd62082b24f809bfba29a402489d)]
+* `PwBaseWorkChain`: Always do full restart for `ERROR_OUT_OF_WALLTIME` [[fcb8da9](https://github.com/aiidateam/aiida-quantumespresso/commit/fcb8da9a165fc4f6e94c29a6e4f1d29305da4548)]
+
+### 📚 Documentation
+
+* `README.md`: Correct `aiida-core` compatibility [[1c8a804](https://github.com/aiidateam/aiida-quantumespresso/commit/1c8a8049c005e791300b7d2ca7c4beae32257dc9)]
+
+### 🔧 Maintenance
+
+* Devops: Add explicit sphinx.configuration key to RTD conf  [[733c43f](https://github.com/aiidateam/aiida-quantumespresso/commit/733c43ff6b690c19eacb108154038ca93082d145)]
+* Update Python support: drop v3.8 and add v3.12 [[172540b](https://github.com/aiidateam/aiida-quantumespresso/commit/172540be5078e77d58b6a8cc1b28cbae2c6e70b9)]
+
 ## v4.7.0
 
 ### ✨ New features

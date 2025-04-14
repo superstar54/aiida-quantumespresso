@@ -444,16 +444,14 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
     def handle_out_of_walltime(self, calculation):
         """Handle `ERROR_OUT_OF_WALLTIME` exit code.
 
-        In this case the calculation shut down neatly and we can simply restart. We consider two cases:
-
-        1. If the structure is unchanged, we do a full restart.
-        2. If the structure has changed during the calculation, we restart from scratch.
+        In this case the calculation shut down cleanly and we can do a full restart.
         """
         if 'output_structure' in calculation.outputs:
             self.ctx.inputs.structure = calculation.outputs.output_structure
 
-        self.set_restart_type(RestartType.FROM_CHARGE_DENSITY, calculation.outputs.remote_folder)
-        self.report_error_handled(calculation, "restarting from the previous charge 'density.'")
+        self.set_restart_type(RestartType.FULL, calculation.outputs.remote_folder)
+        self.report_error_handled(calculation, "restarting in full with `CONTROL.restart_mode` = 'restart'")
+
         return ProcessHandlerReport(True)
 
     @process_handler(priority=575, exit_codes=[
