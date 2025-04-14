@@ -384,3 +384,13 @@ class PwRelaxWorkChain(ProtocolMixin, WorkChain):
         settings['FIXED_COORDS'] = [[True, True, True]] * len(structure.sites)
 
         return settings
+
+    def submit(
+        self,
+        process,
+        inputs=None,
+        **kwargs,
+    ):
+        """Submit a process to the scheduler."""
+        from aiida_workgraph.utils.control import submit_to_scheduler_inside_workchain
+        return submit_to_scheduler_inside_workchain(self, process, inputs, **kwargs)

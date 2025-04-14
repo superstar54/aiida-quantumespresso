@@ -594,7 +594,7 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         """
         factor = self.defaults.delta_factor_mixing_beta
         mixing_beta = self.ctx.inputs.parameters.get('ELECTRONS', {}).get('mixing_beta', self.defaults.qe.mixing_beta)
-        mixing_beta_new = mixing_beta * factor
+        mixing_beta_new = max(mixing_beta * factor, 0.1)
 
         self.ctx.inputs.parameters['ELECTRONS']['mixing_beta'] = mixing_beta_new
         self.ctx.inputs.structure = calculation.outputs.output_structure
@@ -618,7 +618,7 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         """
         factor = self.defaults.delta_factor_mixing_beta
         mixing_beta = self.ctx.inputs.parameters.get('ELECTRONS', {}).get('mixing_beta', self.defaults.qe.mixing_beta)
-        mixing_beta_new = mixing_beta * factor
+        mixing_beta_new = max(mixing_beta * factor, 0.1)
 
         self.ctx.inputs.parameters['ELECTRONS']['mixing_beta'] = mixing_beta_new
         action = f'reduced beta mixing from {mixing_beta} to {mixing_beta_new} and restarting from the last calculation'
@@ -637,3 +637,13 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         self.report_error_handled(calculation, action)
         self.results()  # Call the results method to attach the output nodes
         return ProcessHandlerReport(True, self.exit_codes.WARNING_ELECTRONIC_CONVERGENCE_NOT_REACHED)
+
+    def submit(
+        self,
+        process,
+        inputs=None,
+        **kwargs,
+    ):
+        """Submit the process to the scheduler."""
+        from aiida_workgraph.utils.control import submit_to_scheduler_inside_workchain
+        return submit_to_scheduler_inside_workchain(self, process, inputs, **kwargs)
