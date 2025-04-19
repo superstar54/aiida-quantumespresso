@@ -592,9 +592,13 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         """
         factor = self.defaults.delta_factor_mixing_beta
         mixing_beta = self.ctx.inputs.parameters.get('ELECTRONS', {}).get('mixing_beta', self.defaults.qe.mixing_beta)
+        electron_maxstep = self.ctx.inputs.parameters.get('ELECTRONS', {}
+                                                          ).get('electron_maxstep', self.defaults.qe.electron_maxstep)
         mixing_beta_new = max(mixing_beta * factor, 0.1)
+        electron_maxstep_new = electron_maxstep + 20
 
         self.ctx.inputs.parameters['ELECTRONS']['mixing_beta'] = mixing_beta_new
+        self.ctx.inputs.parameters['ELECTRONS']['electron_maxstep'] = electron_maxstep_new
         self.ctx.inputs.structure = calculation.outputs.output_structure
         action = (
             f'no electronic convergence but clean shutdown: reduced beta mixing from {mixing_beta} to {mixing_beta_new}'
@@ -616,9 +620,13 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         """
         factor = self.defaults.delta_factor_mixing_beta
         mixing_beta = self.ctx.inputs.parameters.get('ELECTRONS', {}).get('mixing_beta', self.defaults.qe.mixing_beta)
+        electron_maxstep = self.ctx.inputs.parameters.get('ELECTRONS', {}
+                                                          ).get('electron_maxstep', self.defaults.qe.electron_maxstep)
         mixing_beta_new = max(mixing_beta * factor, 0.1)
+        electron_maxstep_new = electron_maxstep + 20
 
         self.ctx.inputs.parameters['ELECTRONS']['mixing_beta'] = mixing_beta_new
+        self.ctx.inputs.parameters['ELECTRONS']['electron_maxstep'] = electron_maxstep_new
         action = f'reduced beta mixing from {mixing_beta} to {mixing_beta_new} and restarting from the last calculation'
 
         self.set_restart_type(RestartType.FULL, calculation.outputs.remote_folder)
