@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Workchain to run a Quantum ESPRESSO pw.x calculation with automated error handling and restarts."""
+from typing import Optional
+
 from aiida import orm
 from aiida.common import AttributeDict, exceptions
 from aiida.common.lang import type_check
@@ -258,6 +260,9 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
             self.ctx.inputs.parameters.setdefault('CELL', {})
 
         self.ctx.inputs.settings = self.ctx.inputs.settings.get_dict() if 'settings' in self.ctx.inputs else {}
+        self.ctx.max_iterations = self.inputs.max_iterations.value
+        # use max_iterations + 20 to avoid infinite loop
+        self.ctx.iterations_hard_limit = self.inputs.max_iterations.value + 40
 
     def validate_kpoints(self):
         """Validate the inputs related to k-points.
@@ -446,9 +451,36 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
 
         In this case the calculation shut down cleanly and we can do a full restart.
         """
+
+        # In this case, the calculation could continue.
+        if 'max_iterations' not in self.ctx:
+            self.ctx.max_iterations = self.inputs.max_iterations.value
+        self.report(f'Walltime exceeded, increasing max_iterations to {self.ctx.max_iterations}')
+        self.ctx.max_iterations += 1
+
         if 'output_structure' in calculation.outputs:
             self.ctx.inputs.structure = calculation.outputs.output_structure
 
+        # check if the electronic convergence was reached
+        node = self.ctx.children[self.ctx.iteration - 1]
+        electron_maxstep = self.ctx.inputs.parameters.get('ELECTRONS', {}
+                                                          ).get('electron_maxstep', self.defaults.qe.electron_maxstep)
+        if 'output_parameters' in node.outputs:
+            output_parameters = node.outputs['output_parameters'].get_dict()
+            if 'convergence_info' in output_parameters:
+                convergence_info = output_parameters['convergence_info']
+                scf_conv = convergence_info['scf_conv']
+                opt_conv = convergence_info['opt_conv']
+                self.report(f"n_opt_steps = {opt_conv['n_opt_steps']}")
+                self.report(f"scf_conv = {scf_conv['convergence_achieved']}")
+                self.report(f'electron_maxstep = {electron_maxstep}')
+                if opt_conv['n_opt_steps'] == 0:
+                    if scf_conv['n_scf_steps'] > electron_maxstep:
+                        # the electronic convergence was not reached after the maximum number of steps
+                        # use different error handler, and return
+                        self.ctx.max_iterations -= 1
+                        return self.handle_relax_recoverable_electronic_convergence_error(calculation=node)
+        # if we are here, it means that the electronic convergence was reached
         self.set_restart_type(RestartType.FULL, calculation.outputs.remote_folder)
         self.report_error_handled(calculation, "restarting in full with `CONTROL.restart_mode` = 'restart'")
 
@@ -595,7 +627,7 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         electron_maxstep = self.ctx.inputs.parameters.get('ELECTRONS', {}
                                                           ).get('electron_maxstep', self.defaults.qe.electron_maxstep)
         mixing_beta_new = max(mixing_beta * factor, 0.1)
-        electron_maxstep_new = electron_maxstep + 20
+        electron_maxstep_new = min(electron_maxstep + 20, 150)
 
         self.ctx.inputs.parameters['ELECTRONS']['mixing_beta'] = mixing_beta_new
         self.ctx.inputs.parameters['ELECTRONS']['electron_maxstep'] = electron_maxstep_new
@@ -623,7 +655,7 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         electron_maxstep = self.ctx.inputs.parameters.get('ELECTRONS', {}
                                                           ).get('electron_maxstep', self.defaults.qe.electron_maxstep)
         mixing_beta_new = max(mixing_beta * factor, 0.1)
-        electron_maxstep_new = electron_maxstep + 20
+        electron_maxstep_new = min(electron_maxstep + 20, 150)
 
         self.ctx.inputs.parameters['ELECTRONS']['mixing_beta'] = mixing_beta_new
         self.ctx.inputs.parameters['ELECTRONS']['electron_maxstep'] = electron_maxstep_new
@@ -653,3 +685,45 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
         """Submit the process to the scheduler."""
         from aiida_workgraph.utils.control import submit_to_scheduler_inside_workchain
         return submit_to_scheduler_inside_workchain(self, process, inputs, **kwargs)
+
+    def should_run_process(self) -> bool:
+        """Return whether a new process should be run.
+
+        This is the case as long as the last process has not finished successfully and the maximum number of restarts
+        has not yet been exceeded.
+        """
+        if 'max_iterations' not in self.ctx:
+            self.ctx.max_iterations = self.inputs.max_iterations.value
+        if 'iterations_hard_limit' not in self.ctx:
+            self.ctx.iterations_hard_limit = self.inputs.max_iterations.value + 40
+        self.report(f'iteration {self.ctx.iteration} of {self.ctx.max_iterations}')
+        self.report(f'iteration hard limit {self.ctx.iterations_hard_limit}')
+        return not self.ctx.is_finished and self.ctx.iteration < self.ctx.max_iterations \
+            and self.ctx.max_iterations < self.ctx.iterations_hard_limit
+
+    def results(self) -> Optional['ExitCode']:
+        """Attach the outputs specified in the output specification from the last completed process."""
+        node = self.ctx.children[self.ctx.iteration - 1]
+
+        # We check the `is_finished` attribute of the work chain and not the successfulness of the last process
+        # because the error handlers in the last iteration can have qualified a "failed" process as satisfactory
+        # for the outcome of the work chain and so have marked it as `is_finished=True`.
+        if 'max_iterations' not in self.ctx:
+            self.ctx.max_iterations = self.inputs.max_iterations.value
+        if 'iterations_hard_limit' not in self.ctx:
+            self.ctx.iterations_hard_limit = self.inputs.max_iterations.value + 40
+        max_iterations = self.ctx.max_iterations
+        if not self.ctx.is_finished:
+            if self.ctx.iteration >= max_iterations:
+                self.report(
+                    f'reached the maximum number of iterations {max_iterations}: '
+                    f'last ran {self.ctx.process_name}<{node.pk}>'
+                )
+                return self.exit_codes.ERROR_MAXIMUM_ITERATIONS_EXCEEDED
+            if self.ctx.max_iterations >= self.ctx.iterations_hard_limit:
+                self.report('Hard limit for maximum iterations exceeded')
+                return self.exit_codes.ERROR_MAXIMUM_ITERATIONS_EXCEEDED
+
+        self.report(f'work chain completed after {self.ctx.iteration} iterations')
+        self._attach_outputs(node)
+        return None
