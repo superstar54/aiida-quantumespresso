@@ -479,7 +479,30 @@ class PwBaseWorkChain(ProtocolMixin, BaseRestartWorkChain):
                         # the electronic convergence was not reached after the maximum number of steps
                         # use different error handler, and return
                         self.ctx.max_iterations -= 1
-                        return self.handle_relax_recoverable_electronic_convergence_error(calculation=node)
+                        # we need to run it explicitly instead of calling the process handler
+                        # because the process handler will check the exit code and it will not match
+                        # and skip
+                        factor = self.defaults.delta_factor_mixing_beta
+                        mixing_beta = self.ctx.inputs.parameters.get('ELECTRONS', {}
+                                                                     ).get('mixing_beta', self.defaults.qe.mixing_beta)
+                        electron_maxstep = self.ctx.inputs.parameters.get('ELECTRONS', {}).get(
+                            'electron_maxstep', self.defaults.qe.electron_maxstep
+                        )
+                        mixing_beta_new = max(mixing_beta * factor, 0.1)
+                        electron_maxstep_new = min(electron_maxstep + 20, 150)
+
+                        self.ctx.inputs.parameters['ELECTRONS']['mixing_beta'] = mixing_beta_new
+                        self.ctx.inputs.parameters['ELECTRONS']['electron_maxstep'] = electron_maxstep_new
+                        action = (
+                            'no electronic convergence but clean shutdown: reduced beta mixing from'
+                            f' {mixing_beta} to {mixing_beta_new}'
+                            'restarting from charge density and using output structure.'
+                        )
+
+                        self.set_restart_type(RestartType.FROM_CHARGE_DENSITY, calculation.outputs.remote_folder)
+
+                        self.report_error_handled(calculation, action)
+                        return ProcessHandlerReport(True)
         # if we are here, it means that the electronic convergence was reached
         self.set_restart_type(RestartType.FULL, calculation.outputs.remote_folder)
         self.report_error_handled(calculation, "restarting in full with `CONTROL.restart_mode` = 'restart'")
